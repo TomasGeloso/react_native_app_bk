@@ -17,6 +17,10 @@ namespace react_native_app_bk.Services
         {
             return await _context.Users.AnyAsync(u => u.Email == email);
         }
+        public async Task<bool> UsernameExists(string username)
+        {
+            return await _context.Users.AnyAsync(u => u.Username == username);
+        }
 
         public async Task<User> GetUserByEmail(string email)
         {

@@ -65,9 +65,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigin", builder =>
     {
-        builder.WithOrigins("http://localhost:8081")    // React Native App
+        builder.WithOrigins("http://localhost:8081", "http://192.168.1.2:8081")    // React Native App
             .AllowAnyMethod()  // Allow any http method
-            .AllowAnyHeader();   // Allow any header
+            .AllowAnyHeader()   // Allow any header
+            .AllowCredentials(); // Allow credentials
     });
 });
 

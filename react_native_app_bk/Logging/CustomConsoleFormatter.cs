@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Console;
+using System.Diagnostics.CodeAnalysis;
 
 namespace react_native_app_bk.Logging
 {
@@ -9,7 +10,7 @@ namespace react_native_app_bk.Logging
         public CustomConsoleFormatter() : base("CustomFormatter") { }
 
         public override void Write<TState>(
-            in LogEntry<TState> logEntry,
+            in LogEntry<TState> logEntry, [AllowNull]
             IExternalScopeProvider scopeProvider,
             TextWriter textWriter)
         {

@@ -33,10 +33,15 @@ public class AuthController : ControllerBase
             return BadRequest("The email is already in use.");   
         }
 
+        if (await _userService.UsernameExists(model.Username))
+        {
+            return BadRequest("The username is already in use.");
+        }
+
         // Create the password hash
         var user = new User
         {
-            Name = model.Name,
+            Username = model.Username,
             Email = model.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password)
         };
@@ -58,14 +63,14 @@ public class AuthController : ControllerBase
         if (user == null)
         {
             _logger.LogWarning("Login failed: Invalid email - {Email}", model.Email);
-            return Unauthorized("Invalid email or password.");
+            return Unauthorized("Invalid Email.");
         }
 
         // Check if the password is correct
         if (!BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
         {
             _logger.LogWarning("Login failed: Incorrect password for email - {Email}", model.Email);
-            return Unauthorized("Invalid email or password.");
+            return Unauthorized("Invalid Password.");
         }
 
         // Create the JWT token
@@ -74,18 +79,25 @@ public class AuthController : ControllerBase
         return Ok(new { Token = token });
     }
 
+    public IConfiguration Get_configuration()
+    {
+        return _configuration;
+    }
+
     [HttpPost("check-auth")]
-    public IActionResult CheckAuth()
+    public IActionResult CheckAuth(IConfiguration _configuration)
     {
         var authHeader = Request.Headers["Authorization"].FirstOrDefault();
         if (authHeader == null || !authHeader.StartsWith("Bearer"))
         {
+            _logger.LogWarning("No token provided.");
             return Unauthorized("No token provided.");
         }
 
         var token = authHeader.Substring("Bearer ".Length).Trim();
         
         var tokenHandler = new JwtSecurityTokenHandler();
+
         var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]);
 
         try
@@ -99,10 +111,12 @@ public class AuthController : ControllerBase
                 ClockSkew = TimeSpan.Zero
             }, out SecurityToken validatedToken);
             
+            _logger.LogInformation("Authenticated");
             return Ok("Authenticated");
         }
         catch
         {
+            _logger.LogWarning("Invalid token.");
             return Unauthorized("Invalid token.");
         }   
     }
@@ -114,7 +128,7 @@ public class AuthController : ControllerBase
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Email),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim(ClaimTypes.Name, user.Name),
+            new Claim(ClaimTypes.Name, user.Username),
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
         };
 
