@@ -1,12 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿namespace react_native_app_bk.Controllers;
+using BCrypt.Net;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using react_native_app_bk.Dtos;
-using react_native_app_bk.Models;
+using react_native_app_bk.Models.User;
+using react_native_app_bk.Models.User.Dtos;
 using react_native_app_bk.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using BCrypt.Net;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -27,103 +29,143 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto model)
     {
-        // Verifies if the email already exists
-        if (await _userService.EmailExists(model.Email))
+        // Check if the model is valid
+        if (!ModelState.IsValid)
         {
-            return BadRequest("The email is already in use.");   
+            return BadRequest(ModelState);
         }
 
-        if (await _userService.UsernameExists(model.Username))
+        try
         {
-            return BadRequest("The username is already in use.");
+            // Check if the email is already in use
+            if (await _userService.EmailExists(model.Email))
+            {
+                return BadRequest("The email is already in use.");
+            }
+
+            // Create the user
+            var user = new User
+            {
+                Username = model.Name,
+                Email = model.Email,
+                PasswordHash = BCrypt.HashPassword(model.Password)
+            };
+
+            await _userService.CreateUser(user);
+
+            return Ok("User successfully registered.");
         }
-
-        // Create the password hash
-        var user = new User
+        catch (DbUpdateException ex)
         {
-            Username = model.Username,
-            Email = model.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password)
-        };
-
-        await _userService.CreateUser(user);
-        return Ok("User successfully registered.");
+            _logger.LogError(ex, "Database error ocurred during user registration.");
+            return StatusCode(500, "An error ocurred while creating the user.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error ocurred during user registration.");
+            return StatusCode(500, "An error occurred while registering the user.");
+        }
     }
 
     // Action to login a user
-
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto model)
     {
-        _logger.LogInformation("Login attempt for email: {Email}", model.Email);
-
-        var user = await _userService.GetUserByEmail(model.Email);
-
-        // Check if the user exists
-        if (user == null)
+        // Check if the model is valid
+        if (!ModelState.IsValid)
         {
-            _logger.LogWarning("Login failed: Invalid email - {Email}", model.Email);
-            return Unauthorized("Invalid Email.");
+            return BadRequest(ModelState);
         }
 
-        // Check if the password is correct
-        if (!BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
+        try
         {
-            _logger.LogWarning("Login failed: Incorrect password for email - {Email}", model.Email);
-            return Unauthorized("Invalid Password.");
+            var user = await _userService.GetUserByEmail(model.Email);
+
+            // Check if the the password is correct
+            if (!BCrypt.Verify(model.Password, user.PasswordHash))
+            {
+                _logger.LogWarning("Login failed for email: {Email}", model.Email);
+                return Unauthorized("Invalid email or password.");
+            }
+
+            // Create the JWT token
+            var token = GenerateJwtToken(user);
+
+            _logger.LogInformation("Login successful for email: {Email}", model.Email);
+            return Ok(new { Token = token });
         }
-
-        // Create the JWT token
-        var token = GenerateJwtToken(user);
-        _logger.LogInformation("Login successful for email: {Email}", model.Email);
-        return Ok(new { Token = token });
+        catch (UserNotFoundException ex)
+        {
+            _logger.LogWarning(ex, "User not found");
+            return Unauthorized("Invalid email or password."); // We don't want to give hints about the existence of the email
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error ocurred during user login for email: {Email}.", model.Email);
+            return StatusCode(500, "An internal error ocurred.");
+        }
     }
 
-    public IConfiguration Get_configuration()
-    {
-        return _configuration;
-    }
 
+    // Action to check if the token is valid
     [HttpPost("check-auth")]
-    public IActionResult CheckAuth(IConfiguration _configuration)
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public IActionResult CheckAuth([FromHeader] string Authorization)
     {
-        var authHeader = Request.Headers["Authorization"].FirstOrDefault();
-        if (authHeader == null || !authHeader.StartsWith("Bearer"))
+        string keyString = _configuration["Jwt:Key"] ?? string.Empty;   // Use environment variable for key in production
+
+        if (string.IsNullOrEmpty(keyString))
         {
-            _logger.LogWarning("No token provided.");
+            _logger.LogError("JWT key not found.");
+            return StatusCode(500, "JWT key not found.");
+        }
+
+        if (Authorization == null || !Authorization.StartsWith("Bearer"))
+        {
             return Unauthorized("No token provided.");
         }
 
-        var token = authHeader.Substring("Bearer ".Length).Trim();
-        
+        var token = Authorization.Substring("Bearer ".Length).Trim();
         var tokenHandler = new JwtSecurityTokenHandler();
-
-        var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]);
 
         try
         {
             tokenHandler.ValidateToken(token, new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(key),
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString)),
                 ValidateIssuer = false,
                 ValidateAudience = false,
                 ClockSkew = TimeSpan.Zero
             }, out SecurityToken validatedToken);
-            
-            _logger.LogInformation("Authenticated");
+
+            _logger.LogInformation("Token validated.");
             return Ok("Authenticated");
         }
-        catch
+        catch (SecurityTokenException ex)
         {
-            _logger.LogWarning("Invalid token.");
+            _logger.LogError(ex, "Invalid token.");
             return Unauthorized("Invalid token.");
-        }   
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An unexpected error occurred while validating the token.");
+            return StatusCode(500, "An unexpected error occurred while validating the token.");
+        }
     }
 
     // Method to generate the JWT token
     private string GenerateJwtToken(User user)
     {
+        string keyString = _configuration["Jwt:Key"] ?? string.Empty;   // Use environment variable for key in production
+
+        if (string.IsNullOrEmpty(keyString))
+        {
+            _logger.LogError("JWT key not found.");
+        }
+
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Email),
@@ -132,7 +174,7 @@ public class AuthController : ControllerBase
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
         };
 
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
