@@ -60,6 +60,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 // Sample Service Registration
 builder.Services.AddScoped<ISampleService, SampleService>();
 
+// Authorization Configuration
+builder.Services.AddAuthorization();
+
 // JWT Configuration
 builder.Services.AddAuthentication(options =>
 {
@@ -78,6 +81,7 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
 });
+
 
 // Cors Configuration
 
@@ -142,6 +146,7 @@ if (app.Environment.IsDevelopment())
 //app.UseHttpsRedirection();
 app.UseCors("AllowSpecificOrigin");
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

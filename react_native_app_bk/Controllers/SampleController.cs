@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using react_native_app_bk.Models.Sample;
 using react_native_app_bk.Models.Sample.Dtos;
 using react_native_app_bk.Services;
@@ -20,6 +21,7 @@ namespace react_native_app_bk.Controllers
 
         // Action to get all samples
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetAll()
         {
             try
@@ -36,6 +38,7 @@ namespace react_native_app_bk.Controllers
 
         // Action to get a sample by Id
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<IActionResult> GetSample(int id)
         {
             try
@@ -57,6 +60,7 @@ namespace react_native_app_bk.Controllers
 
         // Action to create a new sample
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> CreateSample([FromBody] SampleDto model)
         {
             if (!ModelState.IsValid)
