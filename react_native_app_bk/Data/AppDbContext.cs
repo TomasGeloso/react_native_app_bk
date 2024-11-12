@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using react_native_app_bk.Models;
+using react_native_app_bk.Models.Sample;
+using react_native_app_bk.Models.User;
 
 namespace react_native_app_bk.Data
 {
@@ -7,9 +9,13 @@ namespace react_native_app_bk.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        // Here we define the tables like DbSet
 
-        public DbSet<User> Users { get; set; }
+        public DbSet<User> Users { get; set; } = null!;
+
+        public DbSet<Sample> Samples { get; set; } = null!;
+        public DbSet<SampleType> SampleTypes { get; set; } = null!;
+        public DbSet<Material> Materials { get; set; } = null!;
+        public DbSet<TestSpecimenType> TestSpecimenTypes { get; set; } = null!;
 
     }
 }
