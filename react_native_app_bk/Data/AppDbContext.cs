@@ -9,15 +9,18 @@ namespace react_native_app_bk.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) {
             Users = Set<User>();
+            Samples = Set<Sample>();
+            SampleTypes = Set<SampleType>();
+            Materials = Set<Material>();
+            TestSpecimenTypes = Set<TestSpecimenType>();
         }
 
 
-        public DbSet<User> Users { get; set; } = null!;
+        public DbSet<User> Users { get; set; }
 
-        public DbSet<Sample> Samples { get; set; } = null!;
-        public DbSet<SampleType> SampleTypes { get; set; } = null!;
-        public DbSet<Material> Materials { get; set; } = null!;
-        public DbSet<TestSpecimenType> TestSpecimenTypes { get; set; } = null!;
-
+        public DbSet<Sample> Samples { get; set; }
+        public DbSet<SampleType> SampleTypes { get; set; }
+        public DbSet<Material> Materials { get; set; }
+        public DbSet<TestSpecimenType> TestSpecimenTypes { get; set; }
     }
 }
