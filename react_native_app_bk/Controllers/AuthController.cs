@@ -2,12 +2,16 @@
 using BCrypt.Net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using Microsoft.IdentityModel.Tokens;
+using react_native_app_bk.Models.RefreshToken;
+using react_native_app_bk.Models.RefreshToken.Dtos;
 using react_native_app_bk.Models.User;
 using react_native_app_bk.Models.User.Dtos;
 using react_native_app_bk.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 [ApiController]
@@ -17,12 +21,14 @@ public class AuthController : ControllerBase
     private readonly IUserService _userService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
+    private readonly IRefreshTokenService _refreshTokenService;
 
-    public AuthController(IUserService userService, IConfiguration configuration, ILogger<AuthController> logger)
+    public AuthController(IUserService userService, IConfiguration configuration, ILogger<AuthController> logger, IRefreshTokenService refreshTokenService)
     {
         _userService = userService;
         _configuration = configuration;
         _logger = logger;
+        _refreshTokenService = refreshTokenService;
     }
 
     // Action to register a new user
@@ -69,11 +75,12 @@ public class AuthController : ControllerBase
 
     // Action to login a user
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginDto model)
+    public async Task<IActionResult> Login([FromBody] LoginDto model, [FromHeader(Name = "deviceInfo")] string deviceInfo)
     {
         // Check if the model is valid
         if (!ModelState.IsValid)
         {
+            _logger.LogError("Invalid model state.");
             return BadRequest(ModelState);
         }
 
@@ -88,11 +95,32 @@ public class AuthController : ControllerBase
                 return Unauthorized("Invalid email or password.");
             }
 
-            // Create the JWT token
-            var token = GenerateJwtToken(user);
+            // Check if the user has a refresh token already
+            var alreadyRefreshToken = await _refreshTokenService.GetRefreshToken(user.Id);
+            // If the user has a refresh token, delete it
+            if (alreadyRefreshToken != null)
+            {
+                await _refreshTokenService.DeleteRefreshToken(alreadyRefreshToken.User_Id, alreadyRefreshToken.Device);
+            }
+
+            // Create the access JWT token and the refresh token
+            var newAccessToken = GenerateJwtToken(user);
+            var newRefreshToken = GenerateRefreshToken();
+
+            var refreshToken = new RefreshToken
+            {
+                User_Id = user.Id,
+                Refresh_Token = newRefreshToken,
+                Refresh_Token_Expiry = DateTime.Now.AddMinutes(1),
+                Device = deviceInfo
+            };
+
+            await _refreshTokenService.AddRefreshToken(refreshToken);   // Save the refresh token in the database
 
             _logger.LogInformation("Login successful for email: {Email}", model.Email);
-            return Ok(new { Token = token });
+            return Ok(new {
+                AccessToken = newAccessToken    // Return the access token to the user
+            });
         }
         catch (UserNotFoundException ex)
         {
@@ -106,53 +134,82 @@ public class AuthController : ControllerBase
         }
     }
 
-
-    // Action to check if the token is valid
-    [HttpPost("check-auth")]
-    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult CheckAuth([FromHeader] string Authorization)
+    [HttpPost("refresh-token")]
+    public async Task<IActionResult> RefreshToken([FromHeader(Name = "Authorization")] string authorizationHeader, [FromHeader(Name = "Device")] string deviceInfo)
     {
-        string keyString = _configuration["Jwt:Key"] ?? string.Empty;   // Use environment variable for key in production
-
-        if (string.IsNullOrEmpty(keyString))
+        if (string.IsNullOrWhiteSpace(authorizationHeader) || !authorizationHeader.StartsWith("Bearer"))
         {
-            _logger.LogError("JWT key not found.");
-            return StatusCode(500, "JWT key not found.");
+            _logger.LogWarning("No token provided.");
+            return Unauthorized(new { error = "invalid_token", message = "No token provided." });
         }
 
-        if (Authorization == null || !Authorization.StartsWith("Bearer"))
-        {
-            return Unauthorized("No token provided.");
-        }
-
-        var token = Authorization.Substring("Bearer ".Length).Trim();
-        var tokenHandler = new JwtSecurityTokenHandler();
+        var accessToken = authorizationHeader.Substring("Bearer ".Length).Trim();
 
         try
         {
-            tokenHandler.ValidateToken(token, new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString)),
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ClockSkew = TimeSpan.Zero
-            }, out SecurityToken validatedToken);
+            // Get the user from the access token
+            var principal = GetPrincipalFromExpiredToken(accessToken);
+            var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            _logger.LogInformation("Token validated.");
-            return Ok("Authenticated");
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                _logger.LogError("Invalid user id in the token.");
+                return Unauthorized(new { error = "invalid_token", message = "Invalid token." });
+            }
+
+            // Get the refresh token from the database
+            var refreshToken = await _refreshTokenService.GetRefreshToken(userId);
+
+            if(refreshToken == null)
+            {
+                _logger.LogWarning("Refresh token not found in the database.");
+                return Unauthorized(new { error = "refresh_token_not_found", message = "Refresh token not found." });
+            }
+
+            // Check if the refresh token is valid
+            if (refreshToken.Refresh_Token_Expiry <= DateTime.Now)
+            {
+                await _refreshTokenService.DeleteRefreshToken(userId, deviceInfo);
+                _logger.LogWarning("Invalid or expired refresh token in the DataBase.");
+                return Unauthorized(new { error = "expired_refresh_token", message = "Invalid or expired refresh token." });
+            }
+
+            // Generate a new access token and refresh token
+            var user = await _userService.GetUserById(userId);
+
+            if(user == null)
+            {
+                _logger.LogError("User not found.");
+                return Unauthorized(new { error = "invalid_token", message = "Invalid token." });
+            }
+
+            var newAccessToken = GenerateJwtToken(user);
+
+            var newRefreshToken = new RefreshToken
+            {
+                User_Id = user.Id,
+                Refresh_Token = GenerateRefreshToken(),
+                Refresh_Token_Expiry = DateTime.Now.AddDays(1),
+                Device = deviceInfo
+            };
+
+            await _refreshTokenService.AddRefreshToken(newRefreshToken);   // Save the refresh token in the database
+
+            return Ok(new
+            {
+                AccessToken = newAccessToken
+            });
+
         }
-        catch (SecurityTokenException ex)
+        catch(SecurityTokenException ex)
         {
             _logger.LogError(ex, "Invalid token.");
-            return Unauthorized("Invalid token.");
+            return Unauthorized(new { error = "invalid_token", message = "Invalid token." });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An unexpected error occurred while validating the token.");
-            return StatusCode(500, "An unexpected error occurred while validating the token.");
+            _logger.LogError(ex, "An error occurred while refreshing the token.");
+            return StatusCode(500, "An internal error occurred.");
         }
     }
 
@@ -160,7 +217,7 @@ public class AuthController : ControllerBase
     private string GenerateJwtToken(User user)
     {
         string keyString = _configuration["Jwt:Key"] ?? string.Empty;   // Use environment variable for key in production
-
+         
         if (string.IsNullOrEmpty(keyString))
         {
             _logger.LogError("JWT key not found.");
@@ -168,10 +225,10 @@ public class AuthController : ControllerBase
 
         var claims = new[]
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(ClaimTypes.Name, user.Username),
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
         };
 
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
@@ -179,12 +236,44 @@ public class AuthController : ControllerBase
 
         var token = new JwtSecurityToken(
             issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Issuer"],
+            audience: _configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.Now.AddHours(1),
+            expires: DateTime.UtcNow.AddSeconds(20),
             signingCredentials: credentials
             );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private static string GenerateRefreshToken()
+    {
+        var randomNumber = new byte[32];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomNumber);
+        return Convert.ToBase64String(randomNumber);
+    }
+
+    private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
+    {
+        var tokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateLifetime = false,
+            ValidateAudience = false,
+            ValidateIssuer = false,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]))
+        };
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+
+        var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
+
+        var jwtSecurityToken = securityToken as JwtSecurityToken;
+        if (jwtSecurityToken == null || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+        {
+            throw new SecurityTokenException("Invalid token");
+        }
+
+        return principal;
     }
 }

@@ -6,8 +6,11 @@ namespace react_native_app_bk.Services
     public interface IUserService
     {
         Task<bool> EmailExists(string email);
+        Task<bool> UsernameExists(string username);
+        Task<User> GetUserById(int id);
         Task<User> GetUserByEmail(string email);
         Task CreateUser(User user);
+        Task UpdateUser(User user);
     }
 
     public class UserService : IUserService
@@ -28,6 +31,16 @@ namespace react_native_app_bk.Services
             return await _context.Users.AnyAsync(u => u.Username == username);
         }
 
+        public async Task<User> GetUserById(int id)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+            if (user == null)
+            {
+                throw new UserNotFoundException(id.ToString());
+            }
+            return user;
+        }
+
         public async Task<User> GetUserByEmail(string email)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
@@ -43,6 +56,12 @@ namespace react_native_app_bk.Services
         public async Task CreateUser(User user)
         {
             _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateUser(User user)
+        {
+            _context.Users.Update(user);
             await _context.SaveChangesAsync();
         }
     }

@@ -2,6 +2,7 @@
 using react_native_app_bk.Models;
 using react_native_app_bk.Models.Sample;
 using react_native_app_bk.Models.User;
+using react_native_app_bk.Models.RefreshToken;
 
 namespace react_native_app_bk.Data
 {
@@ -13,6 +14,7 @@ namespace react_native_app_bk.Data
             SampleTypes = Set<SampleType>();
             Materials = Set<Material>();
             TestSpecimenTypes = Set<TestSpecimenType>();
+            RefreshTokens = Set<RefreshToken>();
         }
 
 
@@ -22,5 +24,6 @@ namespace react_native_app_bk.Data
         public DbSet<SampleType> SampleTypes { get; set; }
         public DbSet<Material> Materials { get; set; }
         public DbSet<TestSpecimenType> TestSpecimenTypes { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
     }
 }

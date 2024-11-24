@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.IdentityModel.Tokens;
@@ -60,6 +61,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 // Sample Service Registration
 builder.Services.AddScoped<ISampleService, SampleService>();
 
+// Refresh Token Service Registration
+builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+
 // Authorization Configuration
 builder.Services.AddAuthorization();
 
@@ -77,8 +81,23 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Issuer"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ClockSkew = TimeSpan.Zero
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+            {
+                var logger = LoggerFactory.Create(logging => logging.AddConsole()).CreateLogger<Program>();
+                logger.LogError("Token has Expired!");
+                context.Response.Headers["Token-Expired"] = "true";
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 
@@ -89,10 +108,11 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigin", builder =>
     {
-        builder.WithOrigins("http://localhost:8081", "http://192.168.1.2:8081")    // React Native App
+        builder.WithOrigins("http://localhost:8081", "http://192.168.1.50:8081")    // React Native App
             .AllowAnyMethod()  // Allow any http method
             .AllowAnyHeader()   // Allow any header
-            .AllowCredentials(); // Allow credentials
+            .AllowCredentials() // Allow credentials
+            .WithExposedHeaders("Token-Expired"); // Allow Authorization header
     });
 });
 
@@ -150,5 +170,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
 
 await app.RunAsync();
