@@ -18,6 +18,9 @@
 
   <ItemGroup>
     <Folder Include="Migrations\" />
+    <Folder Include="Models\MaterialModel\Dtos\" />
+    <Folder Include="Models\SampleTypeModel\Dtos\" />
+    <Folder Include="Models\TestSpecimenTypeModel\Dtos\" />
   </ItemGroup>
 
 </Project>

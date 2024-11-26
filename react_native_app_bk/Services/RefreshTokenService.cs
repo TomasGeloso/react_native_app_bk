@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using react_native_app_bk.Data;
-using react_native_app_bk.Models.RefreshToken;
+using react_native_app_bk.Models.RefreshTokenModel;
 
 namespace react_native_app_bk.Services
 {

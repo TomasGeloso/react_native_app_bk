@@ -1,4 +1,4 @@
-﻿namespace react_native_app_bk.Models.Sample.Dtos
+﻿namespace react_native_app_bk.Models.SampleModel.Dtos
 {
     public class SampleDto
     {
@@ -6,7 +6,7 @@
         public int Sample_Type_Id { get; set; }
         public int Material_Id { get; set; }
         public string Dimentions { get; set; } = null!;
-        public int Test_Specimen_Id { get; set; }
+        public int Test_Specimen_Type_Id { get; set; }
         public string? Observations { get; set; }
     }
 }

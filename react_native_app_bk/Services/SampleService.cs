@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using react_native_app_bk.Models.Sample;
+using react_native_app_bk.Models.SampleModel;
 
 namespace react_native_app_bk.Services
 {
@@ -32,20 +32,24 @@ namespace react_native_app_bk.Services
 
         public async Task<IEnumerable<Sample>> GetAllSamples()
         {
-            return await _context.Samples.ToListAsync();
+            return await _context.Samples
+                .Include(s => s.Sample_Type)
+                .Include(s => s.Material)
+                .Include(s => s.Test_Specimen_Type)
+                .ToListAsync();
         }
 
         public async Task<(bool Success, string ErrorMessage)> CreateSample(Sample sample)
         {
             try
             {
-                var validSampleType = await _context.SampleTypes.AnyAsync(st => st.Id == sample.Sample_Type_Id);
+                var validSampleType = await _context.Sample_Types.AnyAsync(st => st.Id == sample.Sample_Type_Id);
                 if (!validSampleType)
                 {
                     return (false, $"Invalid Sample Type Id: {sample.Sample_Type_Id}");
                 }
 
-                var validTestSpecimenType = await _context.TestSpecimenTypes.AnyAsync(tst => tst.Id == sample.Test_Specimen_Type_Id);
+                var validTestSpecimenType = await _context.Test_Specimen_Types.AnyAsync(tst => tst.Id == sample.Test_Specimen_Type_Id);
                 if (!validTestSpecimenType)
                 {
                     return (false, $"Invalid Test Specimen Type Id: {sample.Test_Specimen_Type_Id}");

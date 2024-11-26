@@ -4,10 +4,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using Microsoft.IdentityModel.Tokens;
-using react_native_app_bk.Models.RefreshToken;
-using react_native_app_bk.Models.RefreshToken.Dtos;
-using react_native_app_bk.Models.User;
-using react_native_app_bk.Models.User.Dtos;
+using react_native_app_bk.Models.RefreshTokenModel;
+using react_native_app_bk.Models.RefreshTokenModel.Dtos;
+using react_native_app_bk.Models.UserModel;
+using react_native_app_bk.Models.UserModel.Dtos;
 using react_native_app_bk.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -111,7 +111,7 @@ public class AuthController : ControllerBase
             {
                 User_Id = user.Id,
                 Refresh_Token = newRefreshToken,
-                Refresh_Token_Expiry = DateTime.Now.AddMinutes(1),
+                Refresh_Token_Expiry = DateTime.Now.AddDays(7),
                 Device = deviceInfo
             };
 
@@ -189,7 +189,7 @@ public class AuthController : ControllerBase
             {
                 User_Id = user.Id,
                 Refresh_Token = GenerateRefreshToken(),
-                Refresh_Token_Expiry = DateTime.Now.AddDays(1),
+                Refresh_Token_Expiry = DateTime.Now.AddDays(7),
                 Device = deviceInfo
             };
 
@@ -238,7 +238,7 @@ public class AuthController : ControllerBase
             issuer: _configuration["Jwt:Issuer"],
             audience: _configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddSeconds(20),
+            expires: DateTime.UtcNow.AddSeconds(10),
             signingCredentials: credentials
             );
 

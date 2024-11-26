@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.IdentityModel.Tokens;
@@ -55,6 +54,7 @@ catch (Exception ex)
     throw new InvalidOperationException("Failed to connect to the database. See inner exception for details.", ex);
 }
 
+
 // User Service Registration
 builder.Services.AddScoped<IUserService, UserService>();
 
@@ -63,6 +63,16 @@ builder.Services.AddScoped<ISampleService, SampleService>();
 
 // Refresh Token Service Registration
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+
+// Material Service Registration
+builder.Services.AddScoped<IMaterialService, MaterialService>();
+
+// Sample Type Service Registration
+builder.Services.AddScoped<ISampleTypeService, SampleTypeService>();
+
+// Test Specimen Type Service Registration
+builder.Services.AddScoped<ITestSpecimenTypeService, TestSpecimenTypeService>();
+
 
 // Authorization Configuration
 builder.Services.AddAuthorization();

@@ -1,4 +1,4 @@
-﻿namespace react_native_app_bk.Models.RefreshToken.Dtos
+﻿namespace react_native_app_bk.Models.RefreshTokenModel.Dtos
 {
     public class RefreshTokenDto
     {

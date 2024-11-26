@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using react_native_app_bk.Models.Sample;
-using react_native_app_bk.Models.Sample.Dtos;
+using react_native_app_bk.Models.SampleModel;
+using react_native_app_bk.Models.SampleModel.Dtos;
 using react_native_app_bk.Services;
 
 namespace react_native_app_bk.Controllers
@@ -76,7 +76,7 @@ namespace react_native_app_bk.Controllers
                     Sample_Type_Id = model.Sample_Type_Id,
                     Material_Id = model.Material_Id,
                     Dimentions = model.Dimentions,
-                    Test_Specimen_Type_Id = model.Test_Specimen_Id,
+                    Test_Specimen_Type_Id = model.Test_Specimen_Type_Id,
                     Observations = model.Observations,
                     Date_Received = DateTime.Now
                 };

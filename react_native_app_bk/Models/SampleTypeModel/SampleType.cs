@@ -1,9 +1,9 @@
-﻿namespace react_native_app_bk.Models
-{
-    using System.ComponentModel.DataAnnotations;
-    using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-    public class TestSpecimenType
+namespace react_native_app_bk.Models.SampleTypeModel
+{
+    public class SampleType
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -11,10 +11,9 @@
 
         [Required]
         [MaxLength(100)]
-        public string Name { get; set; } = null!;
+        public string Name { get; set; } = string.Empty;
 
         [MaxLength(255)]
         public string? Description { get; set; }
-
     }
 }

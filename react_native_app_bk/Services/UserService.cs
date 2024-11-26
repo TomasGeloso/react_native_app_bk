@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using react_native_app_bk.Models.User;
+using react_native_app_bk.Models.UserModel;
 
 namespace react_native_app_bk.Services
 {

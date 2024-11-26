@@ -1,8 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using react_native_app_bk.Models;
-using react_native_app_bk.Models.Sample;
-using react_native_app_bk.Models.User;
-using react_native_app_bk.Models.RefreshToken;
+using react_native_app_bk.Models.SampleModel;
+using react_native_app_bk.Models.UserModel;
+using react_native_app_bk.Models.RefreshTokenModel;
+using react_native_app_bk.Models.MaterialModel;
+using react_native_app_bk.Models.SampleTypeModel;
+using react_native_app_bk.Models.TestSpecimenTypeModel;
 
 namespace react_native_app_bk.Data
 {
@@ -11,9 +13,9 @@ namespace react_native_app_bk.Data
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) {
             Users = Set<User>();
             Samples = Set<Sample>();
-            SampleTypes = Set<SampleType>();
+            Sample_Types = Set<SampleType>();
             Materials = Set<Material>();
-            TestSpecimenTypes = Set<TestSpecimenType>();
+            Test_Specimen_Types = Set<TestSpecimenType>();
             RefreshTokens = Set<RefreshToken>();
         }
 
@@ -21,9 +23,9 @@ namespace react_native_app_bk.Data
         public DbSet<User> Users { get; set; }
 
         public DbSet<Sample> Samples { get; set; }
-        public DbSet<SampleType> SampleTypes { get; set; }
         public DbSet<Material> Materials { get; set; }
-        public DbSet<TestSpecimenType> TestSpecimenTypes { get; set; }
+        public DbSet<SampleType> Sample_Types { get; set; }
+        public DbSet<TestSpecimenType> Test_Specimen_Types { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
     }
 }

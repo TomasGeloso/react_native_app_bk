@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace react_native_app_bk.Models.User
+namespace react_native_app_bk.Models.UserModel
 {
     public class User
     {

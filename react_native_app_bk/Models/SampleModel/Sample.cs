@@ -1,9 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using react_native_app_bk.Models.MaterialModel;
+using react_native_app_bk.Models.SampleTypeModel;
+using react_native_app_bk.Models.TestSpecimenTypeModel;
 
-namespace react_native_app_bk.Models.Sample
+namespace react_native_app_bk.Models.SampleModel
 {
-
     public class Sample
     {
         [Key]
@@ -33,18 +35,5 @@ namespace react_native_app_bk.Models.Sample
 
         [Required]
         public DateTime Date_Received { get; set; }
-    }
-    public class SampleType
-    {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int Id { get; set; }
-
-        [Required]
-        [MaxLength(100)]
-        public string Name { get; set; } = null!;
-
-        [MaxLength(255)]
-        public string? Description { get; set; }
     }
 }

@@ -1,7 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using react_native_app_bk.Models.UserModel;
 
-namespace react_native_app_bk.Models.RefreshToken
+namespace react_native_app_bk.Models.RefreshTokenModel
 {
     public class RefreshToken
     {
@@ -11,7 +12,7 @@ namespace react_native_app_bk.Models.RefreshToken
         [Required]
         public int User_Id { get; set; }
         [ForeignKey("User_Id")]
-        public User.User User { get; set; } = null!;
+        public User User { get; set; } = null!;
 
         [Required]
         [MaxLength(255)]

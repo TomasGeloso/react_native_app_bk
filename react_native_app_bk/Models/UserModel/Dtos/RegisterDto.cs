@@ -1,4 +1,4 @@
-﻿namespace react_native_app_bk.Models.User.Dtos
+﻿namespace react_native_app_bk.Models.UserModel.Dtos
 {
     public class RegisterDto
     {
